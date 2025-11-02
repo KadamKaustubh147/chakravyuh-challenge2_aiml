@@ -1,146 +1,151 @@
 import { useEffect, useState } from "react";
 import api from "../AxiosInstance";
 
-const CubeMystery = () => {
-  const [question, setQuestion] = useState("");
+interface Riddle {
+  id: number;
+  title: string;
+  text: string;
+}
+
+const riddles: Riddle[] = [
+  {
+    id: 1,
+    title: "Riddle 1",
+    text: "I'm made of cubes, both big and small, Some are open, some hide it all. I hold what's wrapped, sealed tight, Awaiting hands to claim their right. Count each block from left to right.",
+  },
+  {
+    id: 2,
+    title: "Riddle 2: The Department Head",
+    text: "The Department Head",
+  },
+];
+
+const RiddleQuiz = () => {
+  const [currentRiddle, setCurrentRiddle] = useState(0);
   const [answer, setAnswer] = useState("");
   const [feedback, setFeedback] = useState("");
-  const [isLocked, setIsLocked] = useState(false);
-  const [remainingTime, setRemainingTime] = useState(0);
-  const riddleId = 1; // Cube Mystery
+  const [cooldown, setCooldown] = useState<number | null>(null);
+  const [submitted, setSubmitted] = useState(false);
 
-  // Helper: check if locked and calculate remaining time
-  const checkLock = () => {
-    const timer = localStorage.getItem(`timer_riddle${riddleId}`);
-    if (!timer) {
-      setRemainingTime(0);
-      return false;
-    }
-
-    const unlockTime = parseInt(timer);
-    const diff = unlockTime - Date.now();
-
-    if (diff <= 0) {
-      localStorage.setItem(`timeOver_riddle${riddleId}`, "true");
-      localStorage.removeItem(`timer_riddle${riddleId}`);
-      setRemainingTime(0);
-      return false;
-    }
-
-    setRemainingTime(diff);
-    return true;
-  };
-
+  // ✅ Restore cooldown timer from localStorage on load
   useEffect(() => {
-    // Fetch question once
-    const fetchQuestion = async () => {
-      try {
-        const res = await api.get("/quiz/questions/");
-        setQuestion(res.data.riddle); // backend should send {riddle: "..."}
-      } catch (error) {
-        console.error("Error fetching question:", error);
+    const endTime = localStorage.getItem("cooldownEndTime");
+    if (endTime) {
+      const remaining = Math.floor(
+        (parseInt(endTime) - Date.now()) / 1000
+      );
+      if (remaining > 0) {
+        setCooldown(remaining);
+        setFeedback(`You can try again in ${remaining} seconds`);
+        const interval = setInterval(() => {
+          setCooldown((prev) => {
+            if (prev && prev > 1) return prev - 1;
+            clearInterval(interval);
+            localStorage.removeItem("cooldownEndTime");
+            setFeedback("");
+            return null;
+          });
+        }, 1000);
+      } else {
+        localStorage.removeItem("cooldownEndTime");
       }
-    };
-
-    fetchQuestion();
-
-    // Check lock initially and update every second
-    setIsLocked(checkLock());
-    const interval = setInterval(() => {
-      const locked = checkLock();
-      setIsLocked(locked);
-    }, 1000);
-
-    return () => clearInterval(interval);
+    }
   }, []);
 
-  // Format ms → mm:ss
-  const formatTime = (ms: number) => {
-    const totalSeconds = Math.ceil(ms / 1000);
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    return `${minutes.toString().padStart(2, "0")}:${seconds
-      .toString()
-      .padStart(2, "0")}`;
-  };
-
-  const submitAnswer = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (cooldown) return; // prevent submission during cooldown
 
-    if (isLocked) {
-      setFeedback("⏳ Please wait until the lock period is over.");
-      return;
-    }
+    const riddle = riddles[currentRiddle];
 
     try {
-      const res = await api.post("/quiz/submit/", {
-        riddle: riddleId,
-        user_answer: answer,
+      await api.post("/quiz/question_submit/", {
+        riddle_id: riddle.id,
+        user_answer: answer.toLowerCase().trim(),
       });
 
-      if (res.status === 200) {
-        const { is_correct, lock_duration_ms } = res.data;
-
-        setFeedback("✅ Submitted successfully!");
-
-        // If wrong, lock the user for 3 min (or backend-provided time)
-        if (is_correct === false) {
-          const lockMs = lock_duration_ms || 3 * 60 * 1000; // default 3min
-          const unlockTime = Date.now() + lockMs;
-
-          localStorage.setItem(`timer_riddle${riddleId}`, unlockTime.toString());
-          localStorage.setItem(`timeOver_riddle${riddleId}`, "false");
-          localStorage.setItem(`isCorrect_riddle${riddleId}`, "false");
-
-          setRemainingTime(lockMs);
-          setIsLocked(true);
-        } else {
-          localStorage.setItem(`isCorrect_riddle${riddleId}`, "true");
-        }
-      }
+      setFeedback("Submitted successfully");
+      setSubmitted(true);
     } catch (error: any) {
-      console.error(error);
-      setFeedback("Submission failed!");
+      if (error.response?.status === 429) {
+        const waitTime = error.response?.data?.retry_after || 30;
+        const endTime = Date.now() + waitTime * 1000;
+
+        // ✅ Save cooldown info
+        localStorage.setItem("cooldownEndTime", endTime.toString());
+        setCooldown(waitTime);
+        setFeedback(`You can try again in ${waitTime} seconds`);
+
+        const interval = setInterval(() => {
+          setCooldown((prev) => {
+            if (prev && prev > 1) return prev - 1;
+            clearInterval(interval);
+            localStorage.removeItem("cooldownEndTime");
+            setFeedback("");
+            return null;
+          });
+        }, 1000);
+      } else {
+        setFeedback("Submission failed!");
+      }
+    }
+  };
+
+  const handleNext = () => {
+    if (currentRiddle < riddles.length - 1) {
+      setCurrentRiddle(currentRiddle + 1);
+      setAnswer("");
+      setFeedback("");
+      setSubmitted(false);
+      setCooldown(null);
     }
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white px-4">
-      <h1 className="text-2xl font-bold mb-4">The Cube Mystery</h1>
-      <p className="text-center mb-4 max-w-md">{question}</p>
+    <div className="max-w-xl mx-auto p-6 text-center">
+      <h1 className="text-2xl font-bold mb-4">{riddles[currentRiddle].title}</h1>
+      <p className="text-lg mb-4">{riddles[currentRiddle].text}</p>
 
-      <form onSubmit={submitAnswer} className="flex flex-col items-center gap-2">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <input
           type="text"
           placeholder="Enter your answer"
           value={answer}
           onChange={(e) => setAnswer(e.target.value)}
-          className="text-white bg-gray-800 rounded px-3 py-2 w-64"
-          disabled={isLocked}
+          className="border rounded-lg p-2 text-center text-gray-800 focus:ring-2 focus:ring-blue-500"
+          required
         />
+
         <button
           type="submit"
-          className={`px-4 py-2 rounded ${
-            isLocked ? "bg-gray-600" : "bg-red-600 hover:bg-red-700"
+          disabled={!!cooldown}
+          className={`px-4 py-2 rounded-lg font-semibold text-white ${
+            cooldown ? "bg-gray-400" : "bg-blue-600 hover:bg-blue-700"
           }`}
-          disabled={isLocked}
         >
-          Submit
+          {cooldown ? `Wait ${cooldown}s` : "Submit"}
         </button>
       </form>
 
-      {isLocked && (
-        <div className="mt-4 text-red-400">
-          ⏳ Locked! Try again in{" "}
-          <span className="font-bold text-yellow-400">
-            {formatTime(remainingTime)}
-          </span>
-        </div>
+      {feedback && (
+        <p className="mt-3 text-sm text-gray-700">{feedback}</p>
       )}
 
-      {feedback && <p className="mt-3 text-yellow-400">{feedback}</p>}
+      {currentRiddle < riddles.length - 1 && (
+        <button
+          onClick={handleNext}
+          disabled={!submitted}
+          className={`mt-4 px-4 py-2 rounded-lg font-semibold transition ${
+            submitted
+              ? "bg-green-600 text-white hover:bg-green-700"
+              : "bg-gray-400 text-gray-700 cursor-not-allowed"
+          }`}
+        >
+          {submitted ? "Next unlocked ✅" : "Next Riddle"}
+        </button>
+      )}
     </div>
   );
 };
 
-export default CubeMystery;
+export default RiddleQuiz;
