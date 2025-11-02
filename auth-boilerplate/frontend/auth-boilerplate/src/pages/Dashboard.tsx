@@ -27,14 +27,13 @@ const RiddleQuiz = () => {
   const [cooldown, setCooldown] = useState<number | null>(null);
   const [submitted, setSubmitted] = useState(false);
 
-  // 🔹 Restore cooldown timer on mount
+  // ✅ Restore cooldown timer on page load
   useEffect(() => {
     const endTime = localStorage.getItem("cooldownEndTime");
     if (endTime) {
       const remaining = Math.floor((parseInt(endTime) - Date.now()) / 1000);
       if (remaining > 0) {
         setCooldown(remaining);
-        setFeedback(`You can try again in ${remaining} seconds`);
         const interval = setInterval(() => {
           setCooldown((prev) => {
             if (prev && prev > 1) return prev - 1;
@@ -50,28 +49,40 @@ const RiddleQuiz = () => {
     }
   }, []);
 
+  // ⏰ Convert seconds → mm:ss format
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (cooldown) return; // ⛔ prevent resubmission during cooldown
+    if (cooldown) return;
 
     const riddle = riddles[currentRiddle];
 
     try {
-      await api.post("/quiz/question_submit/", {
+      const res = await api.post("/quiz/question_submit/", {
         riddle: riddle.id,
         user_answer: answer.toLowerCase().trim(),
       });
 
-      setFeedback("Submitted successfully");
-      setSubmitted(true);
-    } catch (error: any) {
-      if (error.response?.status === 429) {
-        // 🔹 Server indicates rate limit or cooldown
-        const waitTime = error.response?.data?.retry_after || 30;
+      const data = res.data;
+
+      if (data.is_correct) {
+        setFeedback("✅ Correct answer! Proceed to the next riddle.");
+        setSubmitted(true);
+        setCooldown(null);
+        localStorage.removeItem("cooldownEndTime");
+      } else if (data.lock_duration_ms) {
+        // ⚠️ Wrong answer: start cooldown
+        const waitTime = Math.floor(data.lock_duration_ms / 1000);
         const endTime = Date.now() + waitTime * 1000;
+
         localStorage.setItem("cooldownEndTime", endTime.toString());
         setCooldown(waitTime);
-        setFeedback(`You can try again in ${waitTime} seconds`);
+        setFeedback("❌ Wrong answer. You can try again after the timer ends.");
 
         const interval = setInterval(() => {
           setCooldown((prev) => {
@@ -83,14 +94,16 @@ const RiddleQuiz = () => {
           });
         }, 1000);
       } else {
-        setFeedback("Submission failed!");
+        setFeedback(data.message || "❌ Wrong answer, try again.");
       }
+    } catch (error: any) {
+      setFeedback("Submission failed!");
     }
   };
 
   const handleNext = () => {
     if (currentRiddle < riddles.length - 1) {
-      setCurrentRiddle((prev) => prev + 1);
+      setCurrentRiddle(currentRiddle + 1);
       setAnswer("");
       setFeedback("");
       setSubmitted(false);
@@ -111,7 +124,8 @@ const RiddleQuiz = () => {
           placeholder="Enter your answer"
           value={answer}
           onChange={(e) => setAnswer(e.target.value)}
-          className="border rounded-lg p-2 text-center text-gray-800 focus:ring-2 focus:ring-blue-500"
+          disabled={!!cooldown}
+          className="border rounded-lg p-2 text-center text-gray-800 focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
           required
         />
 
@@ -122,12 +136,18 @@ const RiddleQuiz = () => {
             cooldown ? "bg-gray-400" : "bg-blue-600 hover:bg-blue-700"
           }`}
         >
-          {cooldown ? `Wait ${cooldown}s` : "Submit"}
+          {cooldown ? `Wait (${formatTime(cooldown)})` : "Submit"}
         </button>
       </form>
 
       {feedback && (
-        <p className="mt-3 text-sm text-gray-700">{feedback}</p>
+        <p
+          className={`mt-3 text-sm ${
+            cooldown ? "text-red-600" : "text-green-600"
+          }`}
+        >
+          {feedback}
+        </p>
       )}
 
       {currentRiddle < riddles.length - 1 && (
@@ -140,7 +160,7 @@ const RiddleQuiz = () => {
               : "bg-gray-400 text-gray-700 cursor-not-allowed"
           }`}
         >
-          {submitted ? "Next unlocked ✅" : "Next Riddle"}
+          {submitted ? "Next Riddle ✅" : "Next Riddle (Locked)"}
         </button>
       )}
     </div>
