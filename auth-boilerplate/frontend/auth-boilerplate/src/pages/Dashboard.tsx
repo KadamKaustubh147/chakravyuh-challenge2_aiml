@@ -27,13 +27,11 @@ const RiddleQuiz = () => {
   const [cooldown, setCooldown] = useState<number | null>(null);
   const [submitted, setSubmitted] = useState(false);
 
-  // ✅ Restore cooldown timer from localStorage on load
+  // 🔹 Restore cooldown timer on mount
   useEffect(() => {
     const endTime = localStorage.getItem("cooldownEndTime");
     if (endTime) {
-      const remaining = Math.floor(
-        (parseInt(endTime) - Date.now()) / 1000
-      );
+      const remaining = Math.floor((parseInt(endTime) - Date.now()) / 1000);
       if (remaining > 0) {
         setCooldown(remaining);
         setFeedback(`You can try again in ${remaining} seconds`);
@@ -54,7 +52,7 @@ const RiddleQuiz = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (cooldown) return; // prevent submission during cooldown
+    if (cooldown) return; // ⛔ prevent resubmission during cooldown
 
     const riddle = riddles[currentRiddle];
 
@@ -68,10 +66,9 @@ const RiddleQuiz = () => {
       setSubmitted(true);
     } catch (error: any) {
       if (error.response?.status === 429) {
+        // 🔹 Server indicates rate limit or cooldown
         const waitTime = error.response?.data?.retry_after || 30;
         const endTime = Date.now() + waitTime * 1000;
-
-        // ✅ Save cooldown info
         localStorage.setItem("cooldownEndTime", endTime.toString());
         setCooldown(waitTime);
         setFeedback(`You can try again in ${waitTime} seconds`);
@@ -93,7 +90,7 @@ const RiddleQuiz = () => {
 
   const handleNext = () => {
     if (currentRiddle < riddles.length - 1) {
-      setCurrentRiddle(currentRiddle + 1);
+      setCurrentRiddle((prev) => prev + 1);
       setAnswer("");
       setFeedback("");
       setSubmitted(false);
@@ -103,7 +100,9 @@ const RiddleQuiz = () => {
 
   return (
     <div className="max-w-xl mx-auto p-6 text-center">
-      <h1 className="text-2xl font-bold mb-4">{riddles[currentRiddle].title}</h1>
+      <h1 className="text-2xl font-bold mb-4">
+        {riddles[currentRiddle].title}
+      </h1>
       <p className="text-lg mb-4">{riddles[currentRiddle].text}</p>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
