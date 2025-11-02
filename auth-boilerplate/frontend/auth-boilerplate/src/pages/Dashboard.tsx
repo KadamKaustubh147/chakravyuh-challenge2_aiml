@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../AxiosInstance";
+import bgImage from "./bg.webp"; // 🔁 replace with your background image path
 
 interface Riddle {
   id: number;
@@ -15,8 +16,26 @@ const riddles: Riddle[] = [
   },
   {
     id: 2,
-    title: "Riddle 2: The Department Head",
-    text: "The Department Head",
+    title: "Riddle 2",
+    text: `I stand with a foot in two different worlds. 
+One is a silent fortress, built of pure reason, 
+Where theorems stand like stone and logic is the only season. 
+My scholars there speak in ∫ and ∀. 
+
+ 
+
+The other is a roaring, digital sea, 
+
+
+Where my explorers hunt for the patterns of what will be, 
+Wielding the algorithms that see through the noise. 
+
+ 
+
+I do not chart the course, nor build the proof myself, 
+But my voice is the one that sets these minds in motion. 
+I am the living nexus, the hand that guides the hands of both. 
+I cultivate the thinkers, not just the thoughts. `,
   },
 ];
 
@@ -112,7 +131,10 @@ const RiddleQuiz = () => {
   };
 
   return (
-    <div className="max-w-xl mx-auto p-6 text-center">
+    <div className="max-w-xl mx-auto p-6 text-center *:text-white"
+      style={{
+        backgroundImage: `url(${bgImage})`,
+      }}>
       <h1 className="text-2xl font-bold mb-4">
         {riddles[currentRiddle].title}
       </h1>
@@ -132,9 +154,8 @@ const RiddleQuiz = () => {
         <button
           type="submit"
           disabled={!!cooldown}
-          className={`px-4 py-2 rounded-lg font-semibold text-white ${
-            cooldown ? "bg-gray-400" : "bg-blue-600 hover:bg-blue-700"
-          }`}
+          className={`px-4 py-2 rounded-lg font-semibold text-white ${cooldown ? "bg-gray-400" : "bg-blue-600 hover:bg-blue-700"
+            }`}
         >
           {cooldown ? `Wait (${formatTime(cooldown)})` : "Submit"}
         </button>
@@ -142,9 +163,8 @@ const RiddleQuiz = () => {
 
       {feedback && (
         <p
-          className={`mt-3 text-sm ${
-            cooldown ? "text-red-600" : "text-green-600"
-          }`}
+          className={`mt-3 text-sm ${cooldown ? "text-red-600" : "text-green-600"
+            }`}
         >
           {feedback}
         </p>
@@ -154,11 +174,10 @@ const RiddleQuiz = () => {
         <button
           onClick={handleNext}
           disabled={!submitted}
-          className={`mt-4 px-4 py-2 rounded-lg font-semibold transition ${
-            submitted
+          className={`mt-4 px-4 py-2 rounded-lg font-semibold transition ${submitted
               ? "bg-green-600 text-white hover:bg-green-700"
               : "bg-gray-400 text-gray-700 cursor-not-allowed"
-          }`}
+            }`}
         >
           {submitted ? "Next Riddle ✅" : "Next Riddle (Locked)"}
         </button>
