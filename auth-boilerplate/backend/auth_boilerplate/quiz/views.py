@@ -23,35 +23,108 @@ class QuizGetView(APIView):
 
         return Response({"riddle": quiz.riddle}, status=status.HTTP_200_OK)
 
+
+
+
+# views.py
+
+# Define correct answers (lowercase)
+CORRECT_ANSWERS = {
+    1: "54",                # riddle1
+    2: "mainak thakur",     # riddle2
+}
+
+# Lock durations (ms) — backend returns these for frontend convenience
+LOCK_DURATIONS_MS = {
+    1: 3 * 60 * 1000,        # 3 minutes
+    2: int(1.5 * 60 * 1000), # 1.5 minutes
+}
+
 class QuizSubmitView(APIView):
-    """
-    POST: Takes user_answer and returns:
-    - 0 → Correct answer
-    - 1 → Wrong answer
-    """
     authentication_classes = [CustomJWTAuthentication]
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        user_answer = request.data.get("user_answer")
+        """
+        Expects JSON:
+        {
+          "riddle": 1 or 2,
+          "user_answer": "..."
+        }
+        """
+        user = request.user
+        data = request.data
 
-        if not user_answer:
-            return Response({"error": "user_answer not provided."}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            riddle = int(data.get("riddle"))
+        except (TypeError, ValueError):
+            return Response({"detail": "Invalid or missing riddle id."}, status=status.HTTP_400_BAD_REQUEST)
 
-        quiz = Quiz.objects.filter(user=request.user).first()
-        if not quiz:
-            return Response({"error": "No quiz found for this user."}, status=status.HTTP_404_NOT_FOUND)
+        user_answer = (data.get("user_answer") or "").strip().lower()
 
-        user_answer_clean = user_answer.strip().lower()
-        correct = quiz.correct_answer.strip().lower()
+        # get or create user's quiz row
+        quiz, _ = Quiz.objects.get_or_create(user=user)
 
-        # Compare answers
-        code = 0 if user_answer_clean == correct else 1
+        # If riddle 2, first ensure riddle1 is correct
+        if riddle == 2:
+            if not quiz.is_correct1:
+                # Not allowed to attempt riddle 2
+                return Response({
+                    "allowed": False,
+                    "reason": "Riddle 1 not solved yet.",
+                    "is_correct": False
+                }, status=status.HTTP_200_OK)
 
-        quiz.user_answer = user_answer
-        quiz.save()
+            # Proceed to check riddle2
+            correct_answer = CORRECT_ANSWERS[2]
+            is_correct = (user_answer == correct_answer)
 
-        return Response({"result": code}, status=status.HTTP_200_OK)
+            # Save riddle2 answer + correctness
+            quiz.user_answer2 = user_answer
+            quiz.is_correct2 = is_correct
+            quiz.save()
+
+            if not is_correct:
+                # return lock duration so frontend can set localStorage timer
+                return Response({
+                    "allowed": True,
+                    "is_correct": False,
+                    "lock_duration_ms": LOCK_DURATIONS_MS[2],
+                    "message": "Wrong answer for riddle 2."
+                }, status=status.HTTP_200_OK)
+
+            return Response({
+                "allowed": True,
+                "is_correct": True,
+                "message": "Correct!"
+            }, status=status.HTTP_200_OK)
+
+        elif riddle == 1:
+            # Check riddle1
+            correct_answer = CORRECT_ANSWERS[1]
+            is_correct = (user_answer == correct_answer)
+
+            # Save riddle1 answer + correctness
+            quiz.user_answer1 = user_answer
+            quiz.is_correct1 = is_correct
+            quiz.save()
+
+            if not is_correct:
+                return Response({
+                    "allowed": True,
+                    "is_correct": False,
+                    "lock_duration_ms": LOCK_DURATIONS_MS[1],
+                    "message": "Wrong answer for riddle 1."
+                }, status=status.HTTP_200_OK)
+
+            return Response({
+                "allowed": True,
+                "is_correct": True,
+                "message": "Correct! You can now attempt riddle 2."
+            }, status=status.HTTP_200_OK)
+
+        else:
+            return Response({"detail": "Unknown riddle id."}, status=status.HTTP_400_BAD_REQUEST)
 
 
 def health(request):

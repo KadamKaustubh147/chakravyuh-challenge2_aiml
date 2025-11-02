@@ -1,22 +1,27 @@
 import csv
 from django.contrib.auth.models import User
-from quiz.models import Quiz  # 🔁 adjust if needed
 
-with open("riddle.csv", newline='', encoding='utf-8') as csvfile:
+# Path to your CSV file
+csv_path = "teams.csv"
+
+with open(csv_path, newline='', encoding='utf-8') as csvfile:
     reader = csv.DictReader(csvfile)
+    count = 0
     for row in reader:
-        username = row["Team_ID"].strip().lower()  # ✅ use Team_ID
-        riddle_text = row["Riddle"].strip()
-        correct_answer = row["Final_Answer"].strip()
+        username = row['username'].strip()
+        email = row['email'].strip()
+        password = row['password'].strip()
 
-        # Get or create user
-        user, _ = User.objects.get_or_create(username=username)
+        # Check if user already exists
+        if not User.objects.filter(username=username).exists():
+            User.objects.create_user(
+                username=username,
+                email=email,
+                password=password
+            )
+            count += 1
+            print(f"✅ Created user: {username}")
+        else:
+            print(f"⚠️ Skipped (already exists): {username}")
 
-        # Create the Quiz
-        Quiz.objects.create(
-            user=user,
-            riddle=riddle_text,
-            correct_answer=correct_answer
-        )
-
-print("✅ All riddles added successfully!")
+print(f"\n🎉 Done! Total users created: {count}")
