@@ -58,7 +58,7 @@ const RiddleQuiz = () => {
 
     try {
       await api.post("/quiz/question_submit/", {
-        riddle_id: riddle.id,
+        riddle: riddle.id,
         user_answer: answer.toLowerCase().trim(),
       });
 
