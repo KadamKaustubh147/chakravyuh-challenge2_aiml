@@ -143,7 +143,7 @@ const RiddleQuiz = () => {
             value={answer}
             onChange={(e) => setAnswer(e.target.value)}
             disabled={!!cooldown}
-            className="border border-gray-400 rounded-lg p-3 text-center text-black focus:ring-2 focus:ring-blue-500 disabled:bg-gray-200"
+            className="border border-gray-400 rounded-lg p-3 text-center text-white focus:ring-2 focus:ring-blue-500 disabled:bg-gray-200"
             required
           />
 
