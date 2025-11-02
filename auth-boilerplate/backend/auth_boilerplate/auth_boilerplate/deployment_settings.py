@@ -60,18 +60,18 @@ SECRET_KEY = config("SECRET_KEY")
 
 ALLOWED_HOSTS = [
     config("RENDER_EXTERNAL_HOSTNAME"),
-    "chakrvyuh-aiml-1-1.onrender.com",
+    "chakravyuh-challenge2-aiml.onrender.com",
 ]
 
 CSRF_TRUSTED_ORIGINS = [
     "https://" + config("RENDER_EXTERNAL_HOSTNAME"),
-    "https://chakrvyuh-aiml-1-1.onrender.com",
-    "https://chakrvyuh-aiml-1-1-1-frontend.onrender.com",
+    "https://chakravyuh-challenge2-aiml.onrender.com",
+    "https://chakravyuh-challenge2-aiml-frontend.onrender.com/",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
-    "https://chakrvyuh-aiml-1-1-1-frontend.onrender.com",
+    "https://chakravyuh-challenge2-aiml-frontend.onrender.com/",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
@@ -105,5 +105,5 @@ DATABASES = {
     )
 }
 
-FRONTEND_URL = "https://chakrvyuh-aiml-1-1-1-frontend.onrender.com"
+FRONTEND_URL = "https://chakravyuh-challenge2-aiml-frontend.onrender.com/"
 APPEND_SLASH = True
