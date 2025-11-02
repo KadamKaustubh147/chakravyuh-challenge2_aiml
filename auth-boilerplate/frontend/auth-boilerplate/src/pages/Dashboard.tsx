@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../AxiosInstance";
-import bgImage from "./bg.webp"; // 🔁 replace with your background image path
+import bgImage from "./bg.webp"; // your background image path
 
 interface Riddle {
   id: number;
@@ -17,25 +17,19 @@ const riddles: Riddle[] = [
   {
     id: 2,
     title: "Riddle 2",
-    text: `I stand with a foot in two different worlds. 
-One is a silent fortress, built of pure reason, 
-Where theorems stand like stone and logic is the only season. 
-My scholars there speak in ∫ and ∀. 
+    text: `I stand with a foot in two different worlds.
+One is a silent fortress, built of pure reason,
+Where theorems stand like stone and logic is the only season.
+My scholars there speak in ∫ and ∀.
 
- 
+The other is a roaring, digital sea,
+Where my explorers hunt for the patterns of what will be,
+Wielding the algorithms that see through the noise.
 
-The other is a roaring, digital sea, 
-
-
-Where my explorers hunt for the patterns of what will be, 
-Wielding the algorithms that see through the noise. 
-
- 
-
-I do not chart the course, nor build the proof myself, 
-But my voice is the one that sets these minds in motion. 
-I am the living nexus, the hand that guides the hands of both. 
-I cultivate the thinkers, not just the thoughts. `,
+I do not chart the course, nor build the proof myself,
+But my voice is the one that sets these minds in motion.
+I am the living nexus, the hand that guides the hands of both.
+I cultivate the thinkers, not just the thoughts.`,
   },
 ];
 
@@ -46,7 +40,7 @@ const RiddleQuiz = () => {
   const [cooldown, setCooldown] = useState<number | null>(null);
   const [submitted, setSubmitted] = useState(false);
 
-  // ✅ Restore cooldown timer on page load
+  // ✅ Restore cooldown timer
   useEffect(() => {
     const endTime = localStorage.getItem("cooldownEndTime");
     if (endTime) {
@@ -68,7 +62,7 @@ const RiddleQuiz = () => {
     }
   }, []);
 
-  // ⏰ Convert seconds → mm:ss format
+  // Format timer
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
@@ -90,18 +84,17 @@ const RiddleQuiz = () => {
       const data = res.data;
 
       if (data.is_correct) {
-        setFeedback("✅ Correct answer! Proceed to the next riddle.");
+        setFeedback("✅ Submitted successfully!");
         setSubmitted(true);
         setCooldown(null);
         localStorage.removeItem("cooldownEndTime");
-      } else if (data.lock_duration_ms) {
-        // ⚠️ Wrong answer: start cooldown
-        const waitTime = Math.floor(data.lock_duration_ms / 1000);
+      } else {
+        // ❌ Wrong answer
+        const waitTime = 30; // 30 seconds cooldown
         const endTime = Date.now() + waitTime * 1000;
-
         localStorage.setItem("cooldownEndTime", endTime.toString());
         setCooldown(waitTime);
-        setFeedback("❌ Wrong answer. You can try again after the timer ends.");
+        setFeedback("❌ Submitted successfully! (You can retry after timer)");
 
         const interval = setInterval(() => {
           setCooldown((prev) => {
@@ -112,10 +105,8 @@ const RiddleQuiz = () => {
             return null;
           });
         }, 1000);
-      } else {
-        setFeedback(data.message || "❌ Wrong answer, try again.");
       }
-    } catch (error: any) {
+    } catch (error) {
       setFeedback("Submission failed!");
     }
   };
@@ -131,57 +122,68 @@ const RiddleQuiz = () => {
   };
 
   return (
-    <div className="max-w-xl mx-auto p-6 text-center *:text-white"
-      style={{
-        backgroundImage: `url(${bgImage})`,
-      }}>
-      <h1 className="text-2xl font-bold mb-4">
-        {riddles[currentRiddle].title}
-      </h1>
-      <p className="text-lg mb-4">{riddles[currentRiddle].text}</p>
+    <div
+      className="min-h-screen flex items-center justify-center bg-cover bg-center p-6"
+      style={{ backgroundImage: `url(${bgImage})` }}
+    >
+      <div className="max-w-2xl w-full bg-black/60 backdrop-blur-md rounded-2xl p-8 text-center shadow-xl">
+        <h1 className="text-3xl font-bold mb-6 text-white drop-shadow-lg">
+          {riddles[currentRiddle].title}
+        </h1>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <input
-          type="text"
-          placeholder="Enter your answer"
-          value={answer}
-          onChange={(e) => setAnswer(e.target.value)}
-          disabled={!!cooldown}
-          className="border rounded-lg p-2 text-center text-gray-800 focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
-          required
-        />
-
-        <button
-          type="submit"
-          disabled={!!cooldown}
-          className={`px-4 py-2 rounded-lg font-semibold text-white ${cooldown ? "bg-gray-400" : "bg-blue-600 hover:bg-blue-700"
-            }`}
-        >
-          {cooldown ? `Wait (${formatTime(cooldown)})` : "Submit"}
-        </button>
-      </form>
-
-      {feedback && (
-        <p
-          className={`mt-3 text-sm ${cooldown ? "text-red-600" : "text-green-600"
-            }`}
-        >
-          {feedback}
+        {/* Preserve line breaks */}
+        <p className="text-lg mb-6 text-gray-100 whitespace-pre-line leading-relaxed">
+          {riddles[currentRiddle].text}
         </p>
-      )}
 
-      {currentRiddle < riddles.length - 1 && (
-        <button
-          onClick={handleNext}
-          disabled={!submitted}
-          className={`mt-4 px-4 py-2 rounded-lg font-semibold transition ${submitted
-              ? "bg-green-600 text-white hover:bg-green-700"
-              : "bg-gray-400 text-gray-700 cursor-not-allowed"
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <input
+            type="text"
+            placeholder="Enter your answer"
+            value={answer}
+            onChange={(e) => setAnswer(e.target.value)}
+            disabled={!!cooldown}
+            className="border border-gray-400 rounded-lg p-3 text-center text-black focus:ring-2 focus:ring-blue-500 disabled:bg-gray-200"
+            required
+          />
+
+          <button
+            type="submit"
+            disabled={!!cooldown}
+            className={`px-4 py-2 rounded-lg font-semibold text-white transition ${
+              cooldown
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-blue-600 hover:bg-blue-700"
             }`}
-        >
-          {submitted ? "Next Riddle ✅" : "Next Riddle (Locked)"}
-        </button>
-      )}
+          >
+            {cooldown ? `Wait (${formatTime(cooldown)})` : "Submit"}
+          </button>
+        </form>
+
+        {feedback && (
+          <p
+            className={`mt-4 text-sm ${
+              feedback.includes("✅") ? "text-green-400" : "text-red-400"
+            }`}
+          >
+            {feedback}
+          </p>
+        )}
+
+        {currentRiddle < riddles.length - 1 && (
+          <button
+            onClick={handleNext}
+            disabled={!submitted}
+            className={`mt-6 px-5 py-2 rounded-lg font-semibold transition ${
+              submitted
+                ? "bg-green-600 text-white hover:bg-green-700"
+                : "bg-gray-400 text-gray-700 cursor-not-allowed"
+            }`}
+          >
+            {submitted ? "Next Riddle ✅" : "Next Riddle (Locked)"}
+          </button>
+        )}
+      </div>
     </div>
   );
 };
