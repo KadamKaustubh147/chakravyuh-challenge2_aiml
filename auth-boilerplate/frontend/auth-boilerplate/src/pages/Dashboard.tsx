@@ -91,7 +91,7 @@ const RiddleQuiz = () => {
       }  else {
   // ❌ Wrong answer
   // backend sends cooldown in milliseconds
-  const waitTimeMs = data.cooldown || 30000; // fallback to 30s if not provided
+  const waitTimeMs = data.lock_duration_ms || 30000; // fallback to 30s if not provided
   const waitTimeSec = Math.floor(waitTimeMs / 1000);
 
   const endTime = Date.now() + waitTimeMs;
