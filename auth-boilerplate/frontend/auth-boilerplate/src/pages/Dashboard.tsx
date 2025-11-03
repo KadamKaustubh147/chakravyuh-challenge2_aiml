@@ -88,24 +88,28 @@ const RiddleQuiz = () => {
         setSubmitted(true);
         setCooldown(null);
         localStorage.removeItem("cooldownEndTime");
-      } else {
-        // ❌ Wrong answer
-        const waitTime = 30; // 30 seconds cooldown
-        const endTime = Date.now() + waitTime * 1000;
-        localStorage.setItem("cooldownEndTime", endTime.toString());
-        setCooldown(waitTime);
-        setFeedback("❌ Submitted successfully! (You can retry after timer)");
+      }  else {
+  // ❌ Wrong answer
+  // backend sends cooldown in milliseconds
+  const waitTimeMs = data.cooldown || 30000; // fallback to 30s if not provided
+  const waitTimeSec = Math.floor(waitTimeMs / 1000);
 
-        const interval = setInterval(() => {
-          setCooldown((prev) => {
-            if (prev && prev > 1) return prev - 1;
-            clearInterval(interval);
-            localStorage.removeItem("cooldownEndTime");
-            setFeedback("");
-            return null;
-          });
-        }, 1000);
-      }
+  const endTime = Date.now() + waitTimeMs;
+  localStorage.setItem("cooldownEndTime", endTime.toString());
+  setCooldown(waitTimeSec);
+  setFeedback("❌ Submitted successfully! (You can retry after timer)");
+
+  const interval = setInterval(() => {
+    setCooldown((prev) => {
+      if (prev && prev > 1) return prev - 1;
+      clearInterval(interval);
+      localStorage.removeItem("cooldownEndTime");
+      setFeedback("");
+      return null;
+    });
+  }, 1000);
+}
+
     } catch (error) {
       setFeedback("Submission failed!");
     }
